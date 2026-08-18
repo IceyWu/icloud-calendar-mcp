@@ -1,3 +1,13 @@
 # Security Policy
 
-仅当前最新 minor 版本接受安全修复。请不要公开披露漏洞，也不要附真实 Apple ID、应用专用密码或事件数据。仓库尚未设置公开 security contact；建立 GitHub remote 后应启用 GitHub Private Vulnerability Reporting。此前请通过未来 npm 包页面列出的维护者联系方式私下报告。
+## Supported versions
+
+Security fixes are provided for the latest published minor version.
+
+## Reporting a vulnerability
+
+Do not report security vulnerabilities in public issues.
+
+Use [GitHub Private Vulnerability Reporting](https://github.com/IceyWu/icloud-calendar-mcp/security/advisories/new) to submit a private report. Include the affected version, impact, reproduction steps, and any suggested mitigation.
+
+Never include a real Apple Account password, app-specific password, authorization header, private event data, or complete private CalDAV URL. Replace sensitive values with redacted examples.
