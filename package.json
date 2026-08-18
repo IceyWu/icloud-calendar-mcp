@@ -1,7 +1,16 @@
 {
   "name": "icloud-calendar-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Reliable Apple iCloud Calendar MCP server over CalDAV",
+  "keywords": [
+    "apple",
+    "caldav",
+    "calendar",
+    "icloud",
+    "mcp",
+    "model-context-protocol",
+    "typescript"
+  ],
   "homepage": "https://github.com/IceyWu/icloud-calendar-mcp#readme",
   "bugs": {
     "url": "https://github.com/IceyWu/icloud-calendar-mcp/issues"
@@ -19,6 +28,7 @@
     "assets",
     "dist",
     "README.md",
+    "server.json",
     "LICENSE",
     "CHANGELOG.md"
   ],
@@ -33,7 +43,9 @@
     "build": "tsc -p tsconfig.build.json",
     "changeset": "changeset",
     "changeset:status": "changeset status",
-    "changeset:version": "changeset version",
+    "changeset:version": "changeset version && pnpm registry:sync",
+    "registry:check": "node scripts/sync-registry-version.mjs --check",
+    "registry:sync": "node scripts/sync-registry-version.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "ultracite check",
     "format": "oxfmt --check .",
@@ -44,7 +56,7 @@
     "prepack": "pnpm build",
     "release": "pnpm check && changeset publish",
     "smoke:icloud": "vitest run tests/live --passWithNoTests",
-    "check": "pnpm format && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm format && pnpm lint && pnpm typecheck && pnpm registry:check && pnpm test && pnpm build",
     "fix": "ultracite fix"
   },
   "dependencies": {
@@ -70,5 +82,6 @@
   "engines": {
     "node": ">=22.13"
   },
-  "packageManager": "pnpm@11.22.0"
+  "packageManager": "pnpm@11.22.0",
+  "mcpName": "io.github.iceywu/icloud-calendar"
 }

@@ -14,6 +14,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/icloud-calendar-mcp"><img alt="npm 版本" src="https://img.shields.io/npm/v/icloud-calendar-mcp"></a>
+  <a href="https://www.npmjs.com/package/icloud-calendar-mcp"><img alt="npm 下载量" src="https://img.shields.io/npm/dm/icloud-calendar-mcp"></a>
   <a href="https://github.com/IceyWu/icloud-calendar-mcp/actions/workflows/ci.yml"><img alt="CI 状态" src="https://github.com/IceyWu/icloud-calendar-mcp/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://www.npmjs.com/package/icloud-calendar-mcp"><img alt="Node.js 版本" src="https://img.shields.io/node/v/icloud-calendar-mcp"></a>
   <a href="../LICENSE"><img alt="MIT 许可证" src="https://img.shields.io/npm/l/icloud-calendar-mcp"></a>
