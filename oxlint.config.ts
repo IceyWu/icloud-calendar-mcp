@@ -1,0 +1,37 @@
+import { defineConfig } from "oxlint";
+import core from "ultracite/oxlint/core";
+
+export default defineConfig({
+  extends: [core],
+  ignorePatterns: core.ignorePatterns,
+  rules: {
+    "class-methods-use-this": "off",
+    curly: "off",
+    "func-style": "off",
+    "no-await-in-loop": "off",
+    "no-nested-ternary": "off",
+    "no-plusplus": "off",
+    "no-use-before-define": "off",
+    "prefer-destructuring": "off",
+    "require-await": "off",
+    "require-unicode-regexp": "off",
+    "sort-keys": "off",
+    "typescript/method-signature-style": "off",
+    "typescript/no-dynamic-delete": "off",
+    "typescript/no-explicit-any": "off",
+    "typescript/no-non-null-assertion": "off",
+    "typescript/parameter-properties": "off",
+    "unicorn/import-style": "off",
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-await-expression-member": "off",
+    "unicorn/no-negated-condition": "off",
+    "unicorn/no-nested-ternary": "off",
+    "unicorn/numeric-separators-style": "off",
+    "unicorn/text-encoding-identifier-case": "off",
+    "promise/avoid-new": "off",
+    "promise/param-names": "off",
+    "promise/prefer-await-to-callbacks": "off",
+    "promise/prefer-await-to-then": "off",
+    "no-promise-executor-return": "off",
+  },
+});

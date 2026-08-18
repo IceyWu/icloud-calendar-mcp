@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+*.tgz
+.env
+.icloud-caldav-mcp/
+tmp/
+*.log
