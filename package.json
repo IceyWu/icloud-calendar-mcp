@@ -16,6 +16,7 @@
     "icloud-calendar-mcp": "dist/cli.js"
   },
   "files": [
+    "assets",
     "dist",
     "README.md",
     "LICENSE",

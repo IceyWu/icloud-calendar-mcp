@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">iCloud Calendar MCP</title>
+  <desc id="description">A minimal calendar with a highlighted date</desc>
+  <defs>
+    <linearGradient id="surface" x1="96" y1="72" x2="416" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#45B8FF"/>
+      <stop offset="1" stop-color="#5965E9"/>
+    </linearGradient>
+  </defs>
+  <rect x="48" y="48" width="416" height="416" rx="116" fill="url(#surface)"/>
+  <rect x="112" y="116" width="288" height="280" rx="48" fill="#FFFFFF"/>
+  <path d="M112 196h288" fill="none" stroke="#DCE5F4" stroke-width="12"/>
+  <path d="M176 96v48M336 96v48" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round"/>
+  <g fill="#B7C5DA">
+    <rect x="160" y="236" width="40" height="40" rx="12"/>
+    <rect x="236" y="236" width="40" height="40" rx="12"/>
+    <rect x="312" y="236" width="40" height="40" rx="12"/>
+    <rect x="160" y="312" width="40" height="40" rx="12"/>
+    <rect x="312" y="312" width="40" height="40" rx="12"/>
+  </g>
+  <rect x="224" y="300" width="64" height="64" rx="20" fill="url(#surface)"/>
+</svg>

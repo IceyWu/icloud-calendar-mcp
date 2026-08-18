@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { DateTime } from "luxon";
+
 import type { CalDavPort } from "../caldav/client.js";
 import { buildIcs, parseIcs } from "../caldav/ical.js";
 import { CalendarError } from "../domain/errors.js";
@@ -178,11 +180,15 @@ export class CalendarService {
     calendarId: string,
     start: string,
     end: string,
-    excludeHandle?: string
+    excludeHandle?: string,
+    timezone = "UTC"
   ): Promise<{ conflicts: EventRecord[]; hasConflict: boolean }> {
     const page = await this.listEvents(calendarId, start, end, this.maxEvents);
     const conflicts = page.items.filter(
-      (e) => e.handle !== excludeHandle && e.start < end && e.end > start
+      (event) =>
+        event.handle !== excludeHandle &&
+        instant(event.start, event.timezone) < instant(end, timezone) &&
+        instant(event.end, event.timezone) > instant(start, timezone)
     );
     return { conflicts, hasConflict: conflicts.length > 0 };
   }
@@ -196,7 +202,13 @@ export class CalendarService {
   }> {
     const page = await this.listEvents(calendarId, start, end, this.maxEvents);
     return {
-      busy: merge(page.items.map((e) => ({ end: e.end, start: e.start }))),
+      busy: merge(
+        page.items.map((event) => ({
+          end: event.end,
+          start: event.start,
+          timezone: event.timezone,
+        }))
+      ),
       source: "client_computed",
     };
   }
@@ -240,19 +252,32 @@ function stableUid(requestId: string): string {
   return `${digest}@icloud-calendar-mcp`;
 }
 function merge(
-  xs: { start: string; end: string }[]
+  xs: { start: string; end: string; timezone: string }[]
 ): { start: string; end: string }[] {
-  const sorted = [...xs].sort((a, b) => a.start.localeCompare(b.start));
-  const out: { start: string; end: string }[] = [];
+  const sorted = [...xs].sort(
+    (a, b) => instant(a.start, a.timezone) - instant(b.start, b.timezone)
+  );
+  const out: { start: string; end: string; timezone: string }[] = [];
   for (const x of sorted) {
     const last = out.at(-1);
-    if (last && x.start <= last.end) {
-      if (x.end > last.end) {
+    if (
+      last &&
+      instant(x.start, x.timezone) <= instant(last.end, last.timezone)
+    ) {
+      if (instant(x.end, x.timezone) > instant(last.end, last.timezone)) {
         last.end = x.end;
+        last.timezone = x.timezone;
       }
     } else {
       out.push({ ...x });
     }
   }
-  return out;
+  return out.map(({ end, start }) => ({ end, start }));
+}
+function instant(value: string, timezone: string): number {
+  const parsed = DateTime.fromISO(value, { zone: timezone, setZone: true });
+  if (!parsed.isValid) {
+    throw new CalendarError("INVALID_EVENT", `Invalid date-time: ${value}`);
+  }
+  return parsed.toMillis();
 }

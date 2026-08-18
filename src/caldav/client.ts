@@ -29,9 +29,28 @@ const parser = new XMLParser({
 function list<T>(x: T | T[] | undefined): T[] {
   return x === undefined ? [] : Array.isArray(x) ? x : [x];
 }
+function calendarProperty(response: any): any | undefined {
+  return list(response?.propstat).find((propstat: any) => {
+    const resourceType = propstat?.prop?.resourcetype;
+    return (
+      resourceType !== null &&
+      typeof resourceType === "object" &&
+      Object.hasOwn(resourceType, "calendar")
+    );
+  })?.prop;
+}
+function hasWritePrivilege(value: unknown): boolean {
+  if (value === null || typeof value !== "object") return false;
+  if (Object.hasOwn(value, "write") || Object.hasOwn(value, "write-content")) {
+    return true;
+  }
+  return Object.values(value).some((child) => hasWritePrivilege(child));
+}
 export class ICloudCalDavClient implements CalDavPort {
   private principal?: string;
   private home?: string;
+  private origin = ORIGIN;
+  private readonly originsByPath = new Map<string, string>();
   constructor(
     private readonly username: string,
     private readonly password: string,
@@ -42,16 +61,20 @@ export class ICloudCalDavClient implements CalDavPort {
     const xml = await this.request(
       this.home!,
       "PROPFIND",
-      `<d:propfind xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/"><d:prop><d:displayname/><d:resourcetype/><cs:getctag/></d:prop></d:propfind>`,
+      `<d:propfind xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/"><d:prop><d:displayname/><d:resourcetype/><d:current-user-privilege-set/><cs:getctag/></d:prop></d:propfind>`,
       { Depth: "1" }
     );
     const doc = parser.parse(xml.body) as any;
     return list(doc.multistatus?.response)
-      .filter((r: any) => JSON.stringify(r).includes("calendar"))
-      .map((r: any) => ({
-        id: this.safePath(String(r.href)),
-        name: String(r.propstat?.prop?.displayname ?? "Calendar"),
-        readOnly: false,
+      .map((response: any) => ({
+        prop: calendarProperty(response),
+        response,
+      }))
+      .filter((item) => item.prop !== undefined)
+      .map(({ prop, response }) => ({
+        id: this.safePath(String(response.href)),
+        name: String(prop?.displayname ?? "Calendar"),
+        readOnly: !hasWritePrivilege(prop?.["current-user-privilege-set"]),
       }));
   }
   async query(
@@ -169,14 +192,88 @@ export class ICloudCalDavClient implements CalDavPort {
       .filter((x) => x.data);
   }
   private safePath(value: string): string {
-    const u = new URL(value, ORIGIN);
-    if (u.origin !== ORIGIN || !u.pathname.startsWith("/")) {
+    const isAbsolute = /^[A-Za-z][A-Za-z\d+.-]*:/u.test(value);
+    const u = new URL(value, this.origin);
+    if (!isAllowedICloudOrigin(u.origin) || !u.pathname.startsWith("/")) {
       throw new CalendarError(
         "UNSUPPORTED_OPERATION",
         "Rejected non-iCloud CalDAV URL"
       );
     }
+    if (isAbsolute) {
+      this.origin = u.origin;
+      this.originsByPath.set(u.pathname, u.origin);
+    }
     return u.pathname;
+  }
+  private originForPath(path: string): string {
+    const match = [...this.originsByPath.entries()]
+      .filter(([prefix]) => path.startsWith(prefix))
+      .sort(([left], [right]) => right.length - left.length)[0];
+    return match?.[1] ?? this.origin;
+  }
+  private async fetchWithRedirects(
+    path: string,
+    method: string,
+    body: string | undefined,
+    headers: Record<string, string>
+  ): Promise<Response> {
+    let target = new URL(path, this.originForPath(path));
+    for (let redirectCount = 0; redirectCount < 4; redirectCount++) {
+      const response = await fetch(target, {
+        method,
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${this.username}:${this.password}`).toString("base64")}`,
+          ...headers,
+        },
+        ...(body === undefined ? {} : { body }),
+        redirect: "manual",
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+      const location = response.headers.get("location");
+      if (!location) {
+        throw new CalendarError(
+          "TEMPORARY_UNAVAILABLE",
+          "iCloud redirect did not include a Location header"
+        );
+      }
+      target = new URL(location, target);
+      if (!isAllowedICloudOrigin(target.origin)) {
+        throw new CalendarError(
+          "UNSUPPORTED_OPERATION",
+          "Rejected non-iCloud CalDAV redirect"
+        );
+      }
+      this.origin = target.origin;
+    }
+    throw new CalendarError(
+      "TEMPORARY_UNAVAILABLE",
+      "Too many iCloud CalDAV redirects",
+      true
+    );
+  }
+  private validateResponse(response: Response): void {
+    const responseOrigin = new URL(response.url).origin;
+    if (!isAllowedICloudOrigin(responseOrigin)) {
+      throw new CalendarError(
+        "UNSUPPORTED_OPERATION",
+        "Rejected non-iCloud CalDAV redirect"
+      );
+    }
+    this.origin = responseOrigin;
+    if (response.status === 401 || response.status === 403) {
+      throw new CalendarError(
+        "AUTH_FAILED",
+        `iCloud authentication or authorization failed (HTTP ${response.status})`
+      );
+    }
+    if (response.status === 404) {
+      throw new CalendarError("EVENT_NOT_FOUND", "CalDAV object not found");
+    }
+    if (response.status === 409 || response.status === 412) {
+      throw new CalendarError("ETAG_CONFLICT", "CalDAV precondition failed");
+    }
   }
   private async request(
     path: string,
@@ -187,30 +284,13 @@ export class ICloudCalDavClient implements CalDavPort {
     let last: unknown;
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
-        const response = await fetch(new URL(path, ORIGIN), {
+        const response = await this.fetchWithRedirects(
+          path,
           method,
-          headers: {
-            Authorization: `Basic ${Buffer.from(`${this.username}:${this.password}`).toString("base64")}`,
-            ...headers,
-          },
-          ...(body === undefined ? {} : { body }),
-          signal: AbortSignal.timeout(this.timeoutMs),
-        });
-        if (response.status === 401 || response.status === 403) {
-          throw new CalendarError(
-            "AUTH_FAILED",
-            "iCloud authentication failed"
-          );
-        }
-        if (response.status === 404) {
-          throw new CalendarError("EVENT_NOT_FOUND", "CalDAV object not found");
-        }
-        if (response.status === 409 || response.status === 412) {
-          throw new CalendarError(
-            "ETAG_CONFLICT",
-            "CalDAV precondition failed"
-          );
-        }
+          body,
+          headers
+        );
+        this.validateResponse(response);
         if (response.status === 429) {
           last = new CalendarError(
             "RATE_LIMITED",
@@ -259,6 +339,14 @@ function utc(v: string): string {
     .toISOString()
     .replaceAll(/[-:]/g, "")
     .replace(/\.\d{3}Z$/, "Z");
+}
+function isAllowedICloudOrigin(origin: string): boolean {
+  const url = new URL(origin);
+  return (
+    url.protocol === "https:" &&
+    (url.hostname === "caldav.icloud.com" ||
+      /^p\d+-caldav\.icloud\.com$/u.test(url.hostname))
+  );
 }
 function retryMs(r: Response, a: number): number {
   const x = r.headers.get("retry-after");

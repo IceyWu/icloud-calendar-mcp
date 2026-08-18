@@ -7,8 +7,16 @@ const multistatus = (content: string) =>
 const response = (
   body: string,
   status = 207,
-  headers: Record<string, string> = {}
-) => new Response(status === 204 ? null : body, { status, headers });
+  headers: Record<string, string> = {},
+  url = "https://caldav.icloud.com/test"
+) => {
+  const result = new Response(status === 204 ? null : body, {
+    status,
+    headers,
+  });
+  Object.defineProperty(result, "url", { value: url });
+  return result;
+};
 
 describe("iCloud CalDAV adapter", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -31,9 +39,7 @@ describe("iCloud CalDAV adapter", () => {
       )
       .mockResolvedValueOnce(
         response(
-          multistatus(
-            "<d:href>/123/calendars/work/</d:href><d:propstat><d:prop><d:displayname>Work</d:displayname><d:resourcetype><d:collection/><c:calendar/></d:resourcetype></d:prop></d:propstat>"
-          )
+          '<?xml version="1.0"?><d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:response><d:href>/123/calendars/</d:href><d:propstat><d:prop><d:displayname>Calendar Home</d:displayname><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response><d:response><d:href>/123/calendars/work/</d:href><d:propstat><d:prop><d:displayname>Work</d:displayname><d:resourcetype><d:collection/><c:calendar/></d:resourcetype><d:current-user-privilege-set><d:privilege><d:write-content/></d:privilege></d:current-user-privilege-set></d:prop></d:propstat></d:response></d:multistatus>'
         )
       );
     vi.stubGlobal("fetch", fetchMock);
@@ -75,6 +81,115 @@ describe("iCloud CalDAV adapter", () => {
     expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({
       headers: expect.objectContaining({ "If-Match": '"1"' }),
     });
+  });
+  it("accepts numbered Apple CalDAV shards and rejects other redirects", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          response(
+            "ok",
+            200,
+            { etag: '"1"' },
+            "https://p123-caldav.icloud.com/123/event.ics"
+          )
+        )
+    );
+    const client = new ICloudCalDavClient("a@example.com", "app-pass");
+    expect((await client.get("/123/event.ics")).data).toBe("ok");
+
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          response("no", 200, {}, "https://example.com/event.ics")
+        )
+    );
+    await expect(
+      new ICloudCalDavClient("a@example.com", "app-pass").get("/event.ics")
+    ).rejects.toMatchObject({ code: "UNSUPPORTED_OPERATION" });
+  });
+  it("replays authorization after a trusted Apple shard redirect", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response(
+          "",
+          302,
+          { location: "https://p321-caldav.icloud.com/321/event.ics" },
+          "https://caldav.icloud.com/event.ics"
+        )
+      )
+      .mockResolvedValueOnce(
+        response(
+          "ok",
+          200,
+          { etag: '"1"' },
+          "https://p321-caldav.icloud.com/321/event.ics"
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    expect(
+      (
+        await new ICloudCalDavClient("a@example.com", "app-pass").get(
+          "/event.ics"
+        )
+      ).data
+    ).toBe("ok");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1]?.[0])).toMatch(
+      /^https:\/\/p321-caldav\.icloud\.com/
+    );
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      headers: expect.objectContaining({
+        Authorization: expect.stringMatching(/^Basic /),
+      }),
+      method: "GET",
+      redirect: "manual",
+    });
+  });
+  it("routes each discovered calendar back to its own Apple shard", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response(
+          multistatus(
+            "<d:href>/</d:href><d:propstat><d:prop><d:current-user-principal><d:href>/123/principal/</d:href></d:current-user-principal></d:prop></d:propstat>"
+          )
+        )
+      )
+      .mockResolvedValueOnce(
+        response(
+          multistatus(
+            "<d:href>/123/principal/</d:href><d:propstat><d:prop><c:calendar-home-set><d:href>/123/calendars/</d:href></c:calendar-home-set></d:prop></d:propstat>"
+          )
+        )
+      )
+      .mockResolvedValueOnce(
+        response(
+          '<?xml version="1.0"?><d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:response><d:href>https://p111-caldav.icloud.com/123/calendars/work/</d:href><d:propstat><d:prop><d:displayname>Work</d:displayname><d:resourcetype><c:calendar/></d:resourcetype><d:current-user-privilege-set><d:privilege><d:write/></d:privilege></d:current-user-privilege-set></d:prop></d:propstat></d:response><d:response><d:href>https://p222-caldav.icloud.com/123/calendars/other/</d:href><d:propstat><d:prop><d:displayname>Other</d:displayname><d:resourcetype><c:calendar/></d:resourcetype><d:current-user-privilege-set><d:privilege><d:write/></d:privilege></d:current-user-privilege-set></d:prop></d:propstat></d:response></d:multistatus>',
+          207,
+          {},
+          "https://p999-caldav.icloud.com/123/calendars/"
+        )
+      )
+      .mockResolvedValueOnce(
+        response(
+          "event",
+          200,
+          { etag: '"1"' },
+          "https://p111-caldav.icloud.com/123/calendars/work/event.ics"
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ICloudCalDavClient("a@example.com", "app-pass");
+    await client.listCalendars();
+    await client.get("/123/calendars/work/event.ics");
+    expect(String(fetchMock.mock.calls[3]?.[0])).toMatch(
+      /^https:\/\/p111-caldav\.icloud\.com/
+    );
   });
   it("maps authentication and ETag failures to stable codes", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response("", 401)));

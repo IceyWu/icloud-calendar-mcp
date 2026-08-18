@@ -78,6 +78,17 @@ describe("CalendarService", () => {
     ).toHaveLength(2);
     expect(
       (
+        await service.findConflicts(
+          "/calendars/test/",
+          "2026-08-18T18:15:00+08:00",
+          "2026-08-18T18:45:00+08:00",
+          undefined,
+          "Asia/Shanghai"
+        )
+      ).conflicts
+    ).toHaveLength(2);
+    expect(
+      (
         await service.freeBusy(
           "/calendars/test/",
           "2026-08-18T00:00:00Z",

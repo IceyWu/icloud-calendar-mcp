@@ -212,7 +212,8 @@ export function createMcpServer(service: CalendarService): McpServer {
         a.calendar_id,
         a.start,
         a.end,
-        a.exclude_event_handle
+        a.exclude_event_handle,
+        a.timezone
       )
     )
   );
