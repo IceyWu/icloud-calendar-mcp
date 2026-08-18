@@ -12,6 +12,13 @@
   <strong>English</strong> · <a href="docs/README.zh-CN.md">简体中文</a>
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/icloud-calendar-mcp"><img alt="npm version" src="https://img.shields.io/npm/v/icloud-calendar-mcp"></a>
+  <a href="https://github.com/IceyWu/icloud-calendar-mcp/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/IceyWu/icloud-calendar-mcp/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://www.npmjs.com/package/icloud-calendar-mcp"><img alt="Node.js version" src="https://img.shields.io/node/v/icloud-calendar-mcp"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/npm/l/icloud-calendar-mcp"></a>
+</p>
+
 ## Setup
 
 Requirements:
