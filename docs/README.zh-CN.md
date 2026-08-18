@@ -16,7 +16,7 @@
 
 需要：
 
-- Node.js 20 或更高版本
+- Node.js 22.13 或更高版本
 - Apple 账户邮箱
 - Apple [应用专用密码](https://support.apple.com/zh-cn/102654)
 

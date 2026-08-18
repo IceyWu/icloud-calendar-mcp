@@ -16,7 +16,7 @@
 
 Requirements:
 
-- Node.js 20 or later
+- Node.js 22.13 or later
 - Your Apple Account email
 - An Apple [app-specific password](https://support.apple.com/102654)
 
