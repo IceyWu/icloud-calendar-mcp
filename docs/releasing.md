@@ -1,10 +1,12 @@
 # Releasing
 
-1. 更新 `CHANGELOG.md` 和版本号，确认 Git worktree 只有预期变更。
-2. `pnpm install --frozen-lockfile && pnpm check`。
-3. `npm view icloud-calendar-mcp name version --json` 精确确认名称/版本。
-4. `npm pack`，从生成 tarball 安装到临时目录并执行 CLI 的 MCP initialize smoke test。
-5. `npm whoami` 确认正确账户。首次发布如需 OTP/浏览器登录，停下由维护者完成；不得绕过。
-6. `npm publish --access public --provenance`。只有 registry 返回成功并能 `npm view` 到新版本后才宣布发布成功。
+1. 用户可见改动在 PR 中运行 `pnpm changeset`，选择 semver 级别并提交生成的 Markdown 文件。
+2. CI 运行 `pnpm check`、`pnpm changeset:status` 和 `npm pack --dry-run`。
+3. PR 合并到 `main` 后，`changesets/action` 创建或更新 Release PR；它统一修改版本和 changelog。
+4. 合并 Release PR 后，同一 workflow 执行 `pnpm release`：完整质量门禁，然后 `changeset publish`。
+5. npm 发布使用 GitHub OIDC Trusted Publishing 和 provenance，不在仓库配置长期 `NPM_TOKEN`。
+6. 只有 registry 返回成功并能 `npm view` 到新版本后才宣布发布成功。
 
-`.github/workflows/release.yml` 为 GitHub OIDC Trusted Publishing 准备；在 npm 后台配置对应仓库和 workflow 后才可使用。项目不伪造 repository URL，首次建立远程后再补 `package.json.repository`。
+首次启用：先建立 GitHub remote；在 npm 包设置中新增 Trusted Publisher，精确填写实际 owner、repository、workflow 文件 `.github/workflows/release.yml`，不要填写 branch environment。项目不伪造 repository URL，建立远程后再补 `package.json.repository`。
+
+首次包尚不存在时，npm 可能要求维护者先通过 CLI 发布一次或先建立包的 Trusted Publisher 关系，具体取决于 npm 当时的首次发布策略。遇到浏览器登录或 OTP 必须由维护者完成，不能绕过。

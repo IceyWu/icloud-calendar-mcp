@@ -22,6 +22,9 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "changeset": "changeset",
+    "changeset:status": "changeset status",
+    "changeset:version": "changeset version",
     "typecheck": "tsc --noEmit",
     "lint": "ultracite check",
     "format": "oxfmt --check .",
@@ -30,6 +33,7 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "prepack": "pnpm build",
+    "release": "pnpm check && changeset publish",
     "smoke:icloud": "vitest run tests/live --passWithNoTests",
     "check": "pnpm format && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "fix": "ultracite fix"
@@ -43,6 +47,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.0",
     "@types/luxon": "^3.7.1",
     "@types/node": "^24.3.0",
     "@vitest/coverage-v8": "^3.2.4",

@@ -92,6 +92,8 @@ pnpm check
 pnpm pack
 ```
 
+面向用户的改动使用 `pnpm changeset` 记录。推送到 `main` 后，Changesets 自动创建或更新 Release PR；合并该 PR 后，通过 npm Trusted Publishing 自动发布并附带 provenance。首次启用前需要在 npm 包设置中把 `.github/workflows/release.yml` 配置为 Trusted Publisher。
+
 CI 使用 fake adapter/HTTP fixtures，不需要真实 Apple 账号。可选真实测试只在本机显式提供 `ICLOUD_USERNAME` 与 `ICLOUD_APP_PASSWORD` 后运行：`pnpm smoke:icloud`。当前 smoke 套件默认跳过写操作；首次真实验证建议先用专用测试日历手工验证 discovery/list/create/update/delete/recurrence exception 行为。
 
 故障排查：401/403 检查应用专用密码；412 表示 ETag 并发冲突，请重新 `list_events`/`get_event`；429 等待后重试；unknown handle 表示 journal 被删除或数据目录改变。不要把完整 CalDAV URL、Authorization 或事件正文贴入 issue。
