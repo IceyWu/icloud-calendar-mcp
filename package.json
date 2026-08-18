@@ -1,6 +1,6 @@
 {
   "name": "icloud-calendar-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Reliable Apple iCloud Calendar MCP server over CalDAV",
   "homepage": "https://github.com/IceyWu/icloud-calendar-mcp#readme",
   "bugs": {
